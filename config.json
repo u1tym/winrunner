@@ -1,0 +1,20 @@
+{
+  "settings": {
+    "monitor_interval_seconds": 2,
+    "log_directory": "./logs"
+  },
+  "programs": [
+    {
+      "name": "サンプルプログラム1",
+      "working_directory": "D:\\doc\\91.knowhow\\09.study\\pymove",
+      "executable": "D:\\doc\\91.knowhow\\09.study\\pymove\\go.bat",
+      "arguments": []
+    },
+    {
+      "name": "サンプルプログラム2",
+      "working_directory": "C:\\path\\to\\program2",
+      "executable": "python",
+      "arguments": ["script.py", "--verbose"]
+    }
+  ]
+}
