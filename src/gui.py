@@ -270,7 +270,65 @@ class WinRunnerGUI:
     def _reload_config(self) -> None:
         """設定を再読み込み"""
         self._stop_monitoring()
-        self._load_config()
+
+        # 既存のプロセス情報を保存
+        existing_processes = {}
+        if self.process_manager:
+            for name, process_info in self.process_manager.processes.items():
+                existing_processes[name] = {
+                    'process': process_info.process,
+                    'pid': process_info.pid,
+                    'is_running': process_info.is_running,
+                    'start_time': process_info.start_time
+                }
+
+        # 設定を再読み込み
+        if not self.config_manager.load_config():
+            messagebox.showerror("エラー", "設定ファイルの読み込みに失敗しました。")
+            return
+
+        settings = self.config_manager.settings
+        if settings is None:
+            messagebox.showerror("エラー", "設定の読み込みに失敗しました。")
+            return
+
+        # プロセス管理オブジェクトを更新（既存のものを再利用）
+        if self.process_manager is None:
+            self.process_manager = ProcessManager(settings.log_directory)
+        else:
+            # ログディレクトリが変更された場合は更新
+            if self.process_manager.log_directory != settings.log_directory:
+                self.process_manager.log_directory = settings.log_directory
+                self.process_manager._setup_logging()
+
+        # プログラム一覧の作成
+        self._create_program_list()
+
+        # 既存のプロセス情報を復元
+        for program in self.config_manager.programs:
+            if program.name in existing_processes:
+                existing_info = existing_processes[program.name]
+                if existing_info['is_running'] and existing_info['process'] is not None:
+                    # プロセスが実際に動いているかチェック
+                    try:
+                        if existing_info['process'].poll() is None:
+                            # プロセスが動いている場合、情報を復元
+                            process_info = self.process_manager.processes[program.name]
+                            process_info.process = existing_info['process']
+                            process_info.pid = existing_info['pid']
+                            process_info.is_running = existing_info['is_running']
+                            process_info.start_time = existing_info['start_time']
+                    except Exception:
+                        # プロセス情報の復元に失敗した場合は無視
+                        pass
+
+        # 監視の開始
+        self._start_monitoring(settings.monitor_interval_seconds)
+
+        # 即座に状態を更新
+        self._update_all_status()
+
+        self.status_var.set(f"設定を再読み込みしました - {len(self.config_manager.programs)}個のプログラム")
 
     def run(self) -> None:
         """GUIを開始"""

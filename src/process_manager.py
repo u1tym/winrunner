@@ -163,8 +163,11 @@ class ProcessManager:
 
         # プロセスが実際に存在するかチェック
         try:
-            if process_info.process.poll() is not None:
+            # subprocess.Popenのpoll()でチェック
+            poll_result = process_info.process.poll()
+            if poll_result is not None:
                 # プロセスが終了している
+                self.logger.info(f"プログラム '{program_name}' が終了しました (終了コード: {poll_result})")
                 process_info.is_running = False
                 process_info.process = None
                 process_info.pid = None
@@ -173,9 +176,19 @@ class ProcessManager:
             # Windowsの場合、psutilでより詳細なチェック
             if os.name == 'nt' and process_info.pid:
                 try:
-                    psutil.Process(process_info.pid)
-                    return True
+                    psutil_process = psutil.Process(process_info.pid)
+                    # プロセスが実際に存在し、実行中かチェック
+                    if psutil_process.is_running():
+                        return True
+                    else:
+                        # プロセスが存在するが実行中でない
+                        self.logger.info(f"プログラム '{program_name}' のプロセスが実行中ではありません")
+                        process_info.is_running = False
+                        process_info.process = None
+                        process_info.pid = None
+                        return False
                 except psutil.NoSuchProcess:
+                    self.logger.info(f"プログラム '{program_name}' のプロセスが見つかりません")
                     process_info.is_running = False
                     process_info.process = None
                     process_info.pid = None
